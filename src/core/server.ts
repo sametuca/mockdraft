@@ -143,8 +143,8 @@ export function startMockServer(api: OpenAPI.Document, port: number, enableDelay
     });
 
     // Add Dashboard endpoint
-    app.get('/_mockdraft', (_req: Request, res: Response) => {
-        const html = generateDashboard(api, port, enableDelay, enableChaos);
+    app.get('/_mockdraft', async (_req: Request, res: Response) => {
+        const html = await generateDashboard(api, port, enableDelay, enableChaos);
         res.send(html);
     });
 

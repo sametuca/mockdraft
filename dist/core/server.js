@@ -141,8 +141,8 @@ function startMockServer(api, port, enableDelay = false, enableChaos = false) {
             res.status(500).json({ error: 'Failed to generate Postman collection' });
         }
     });
-    app.get('/_mockdraft', (_req, res) => {
-        const html = (0, dashboard_1.generateDashboard)(api, port, enableDelay, enableChaos);
+    app.get('/_mockdraft', async (_req, res) => {
+        const html = await (0, dashboard_1.generateDashboard)(api, port, enableDelay, enableChaos);
         res.send(html);
     });
     const server = app.listen(port, () => {

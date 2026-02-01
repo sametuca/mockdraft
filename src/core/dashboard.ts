@@ -1,18 +1,21 @@
-import { OpenAPI } from 'openapi-types';
+import { OpenAPI, OpenAPIV3 } from 'openapi-types';
+import jsf from 'json-schema-faker';
 
-export function generateDashboard(api: OpenAPI.Document, port: number, enableDelay: boolean, enableChaos: boolean): string {
+export async function generateDashboard(api: OpenAPI.Document, port: number, enableDelay: boolean, enableChaos: boolean): Promise<string> {
     const title = api.info.title;
     const version = api.info.version;
     const paths = api.paths || {};
 
     let endpointsHtml = '';
+    let endpointIdCounter = 0;
 
-    Object.entries(paths).forEach(([pathName, pathItem]) => {
-        if (!pathItem) return;
+    for (const [pathName, pathItem] of Object.entries(paths)) {
+        if (!pathItem) continue;
         const methods = ['get', 'post', 'put', 'delete', 'patch'] as const;
 
-        methods.forEach((method) => {
+        for (const method of methods) {
             if ((pathItem as any)[method]) {
+                const operation = (pathItem as any)[method] as OpenAPIV3.OperationObject;
                 const methodStr = method.toUpperCase();
                 let badgeClass = 'bg-gray-500';
                 if (method === 'get') badgeClass = 'bg-blue-500';
@@ -20,21 +23,71 @@ export function generateDashboard(api: OpenAPI.Document, port: number, enableDel
                 if (method === 'put') badgeClass = 'bg-yellow-500';
                 if (method === 'delete') badgeClass = 'bg-red-500';
 
-                const summary = (pathItem as any)[method].summary || '';
+                const summary = operation.summary || '';
+                const id = `endpoint-${endpointIdCounter++}`;
+
+                // Generate Request Body Example
+                let requestBodyHtml = '';
+                if (operation.requestBody) {
+                    const content = (operation.requestBody as OpenAPIV3.RequestBodyObject).content?.['application/json'];
+                    if (content && content.schema) {
+                        try {
+                            const example = await jsf.resolve(content.schema);
+                            const jsonStr = JSON.stringify(example, null, 2);
+                            requestBodyHtml = `
+                                <div class="mt-3">
+                                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Request Body (Example)</h4>
+                                    <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto">${jsonStr}</pre>
+                                </div>
+                            `;
+                        } catch (e) { }
+                    }
+                }
+
+                // Generate Response Example
+                let responseBodyHtml = '';
+                const successCode = Object.keys(operation.responses || {}).find(c => c.startsWith('2')) || 'default';
+                const successResponse = (operation.responses as any)[successCode] as OpenAPIV3.ResponseObject;
+                if (successResponse) {
+                    const content = successResponse.content?.['application/json'];
+                    if (content && content.schema) {
+                        try {
+                            const example = await jsf.resolve(content.schema);
+                            const jsonStr = JSON.stringify(example, null, 2);
+                            responseBodyHtml = `
+                               <div class="mt-3">
+                                   <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Response (Success ${successCode})</h4>
+                                   <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto">${jsonStr}</pre>
+                               </div>
+                           `;
+                        } catch (e) { }
+                    }
+                }
 
                 endpointsHtml += `
-                <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg scale-hover">
-                    <div class="flex items-center space-x-4">
-                        <span class="px-2 py-1 text-xs font-bold text-white rounded uppercase ${badgeClass} w-16 text-center">${methodStr}</span>
-                        <code class="text-sm font-mono text-gray-700">${pathName}</code>
-                        <span class="text-sm text-gray-500 truncate max-w-xs">${summary}</span>
+                <div class="border border-gray-200 rounded-lg bg-white overflow-hidden mb-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition" onclick="toggleDetails('${id}')">
+                        <div class="flex items-center space-x-4">
+                            <span class="px-2 py-1 text-xs font-bold text-white rounded uppercase ${badgeClass} w-16 text-center">${methodStr}</span>
+                            <code class="text-sm font-mono text-gray-700">${pathName}</code>
+                            <span class="text-sm text-gray-500 truncate max-w-xs hidden sm:inline-block">${summary}</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <a href="http://localhost:${port}${pathName}" target="_blank" class="text-blue-500 hover:text-blue-700 text-xs font-medium px-2 py-1 border border-blue-200 rounded hover:bg-blue-50" onclick="event.stopPropagation()">Test &rarr;</a>
+                            <svg id="icon-${id}" class="w-5 h-5 text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
                     </div>
-                    <a href="http://localhost:${port}${pathName}" target="_blank" class="text-blue-500 hover:text-blue-700 text-sm font-medium">Test &rarr;</a>
+                    <div id="${id}" class="hidden border-t border-gray-200 p-4 bg-gray-50">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${requestBodyHtml || '<div class="text-gray-400 text-xs italic">No request body required.</div>'}
+                            ${responseBodyHtml || '<div class="text-gray-400 text-xs italic">No response schema defined.</div>'}
+                        </div>
+                    </div>
                 </div>
                 `;
             }
-        });
-    });
+        }
+    }
 
     return `
 <!DOCTYPE html>
@@ -44,13 +97,22 @@ export function generateDashboard(api: OpenAPI.Document, port: number, enableDel
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} - MockDraft Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .scale-hover { transition: transform 0.1s ease-in-out; }
-        .scale-hover:hover { transform: scale(1.01); }
-    </style>
+    <script>
+        function toggleDetails(id) {
+            const el = document.getElementById(id);
+            const icon = document.getElementById('icon-' + id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                el.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+    </script>
 </head>
 <body class="bg-gray-50 min-h-screen text-gray-800 font-sans">
-    <div class="max-w-4xl mx-auto py-10 px-4">
+    <div class="max-w-5xl mx-auto py-10 px-4">
         
         <!-- Header -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6 flex justify-between items-center">
