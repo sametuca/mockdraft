@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="media/logo.png" alt="DoppelAPI Logo" width="120" />
-</p>
-
 # DoppelAPI
 
 > **The digital twin of your backend.**
