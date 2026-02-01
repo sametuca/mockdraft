@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -11,6 +44,7 @@ const faker_1 = require("@faker-js/faker");
 const chalk_1 = __importDefault(require("chalk"));
 const cors_1 = __importDefault(require("cors"));
 const postman_1 = require("./postman");
+const dashboard_1 = require("./dashboard");
 json_schema_faker_1.default.extend('faker', () => faker_1.faker);
 json_schema_faker_1.default.option({
     alwaysFakeOptionals: true,
@@ -107,18 +141,9 @@ function startMockServer(api, port, enableDelay = false, enableChaos = false) {
             res.status(500).json({ error: 'Failed to generate Postman collection' });
         }
     });
-    app.get('/_postman/collection.json', (_req, res) => {
-        try {
-            const baseUrl = `http://localhost:${port}`;
-            const collection = (0, postman_1.generatePostmanCollection)(api, baseUrl);
-            res.setHeader('Content-Disposition', 'attachment; filename="collection.json"');
-            res.json(collection);
-            console.log(chalk_1.default.cyan('📦 Postman collection exported'));
-        }
-        catch (error) {
-            console.error('Error generating Postman collection:', error);
-            res.status(500).json({ error: 'Failed to generate Postman collection' });
-        }
+    app.get('/_mockdraft', (_req, res) => {
+        const html = (0, dashboard_1.generateDashboard)(api, port, enableDelay, enableChaos);
+        res.send(html);
     });
     const server = app.listen(port, () => {
         console.log(chalk_1.default.green(`\n🚀 MockDraft server running at http://localhost:${port}`));
@@ -152,7 +177,13 @@ function startMockServer(api, port, enableDelay = false, enableChaos = false) {
             });
         });
         console.log(chalk_1.default.cyan(`\n📦 Postman Collection: http://localhost:${port}/_postman/collection.json`));
+        const dashboardUrl = `http://localhost:${port}/_mockdraft`;
+        console.log(chalk_1.default.magenta(`✨ Dashboard:          ${dashboardUrl}`));
         console.log('');
+        Promise.resolve().then(() => __importStar(require('open'))).then((open) => {
+            open.default(dashboardUrl).catch(() => {
+            });
+        });
     });
     return server;
 }

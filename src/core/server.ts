@@ -6,6 +6,7 @@ import { faker } from '@faker-js/faker';
 import chalk from 'chalk';
 import cors from 'cors';
 import { generatePostmanCollection } from './postman';
+import { generateDashboard } from './dashboard';
 
 // Register faker with json-schema-faker for x-faker support
 jsf.extend('faker', () => faker);
@@ -34,8 +35,8 @@ function chaosMiddleware(failureRate: number = 0.1) {
         const random = Math.random();
         if (random < failureRate) {
             console.log(chalk.red(`💥 Chaos: ${req.method} ${req.url} - Returning 500 error (${Math.round(failureRate * 100)}% chance)`));
-            res.status(500).json({ 
-                error: 'Internal Server Error', 
+            res.status(500).json({
+                error: 'Internal Server Error',
                 message: 'Simulated server failure (chaos mode)',
                 timestamp: new Date().toISOString()
             });
@@ -47,10 +48,10 @@ function chaosMiddleware(failureRate: number = 0.1) {
 
 export function createMockApp(api: OpenAPI.Document, enableDelay = false, enableChaos = false): express.Express {
     const app = express();
-    
+
     // Enable CORS for all routes
     app.use(cors());
-    
+
     app.use(express.json());
 
     // Add delay middleware if enabled
@@ -141,18 +142,10 @@ export function startMockServer(api: OpenAPI.Document, port: number, enableDelay
         }
     });
 
-    // Add Postman collection export endpoint
-    app.get('/_postman/collection.json', (_req: Request, res: Response) => {
-        try {
-            const baseUrl = `http://localhost:${port}`;
-            const collection = generatePostmanCollection(api, baseUrl);
-            res.setHeader('Content-Disposition', 'attachment; filename="collection.json"');
-            res.json(collection);
-            console.log(chalk.cyan('📦 Postman collection exported'));
-        } catch (error) {
-            console.error('Error generating Postman collection:', error);
-            res.status(500).json({ error: 'Failed to generate Postman collection' });
-        }
+    // Add Dashboard endpoint
+    app.get('/_mockdraft', (_req: Request, res: Response) => {
+        const html = generateDashboard(api, port, enableDelay, enableChaos);
+        res.send(html);
     });
 
     const server = app.listen(port, () => {
@@ -184,9 +177,18 @@ export function startMockServer(api: OpenAPI.Document, port: number, enableDelay
                 }
             });
         });
-        
+
         console.log(chalk.cyan(`\n📦 Postman Collection: http://localhost:${port}/_postman/collection.json`));
+        const dashboardUrl = `http://localhost:${port}/_mockdraft`;
+        console.log(chalk.magenta(`✨ Dashboard:          ${dashboardUrl}`));
         console.log(''); // Empty line
+
+        // Open dashboard in browser
+        import('open').then((open) => {
+            open.default(dashboardUrl).catch(() => {
+                // Ignore error if browser fails to open (e.g. in headless environment)
+            });
+        });
     });
 
     return server;
