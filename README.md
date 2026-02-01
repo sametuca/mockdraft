@@ -8,12 +8,30 @@ It is designed to solve the age-old problem in software development: **Frontend 
 
 With DoppelAPI, you create a "Digital Twin" of your future backend. It reads your API contract (OpenAPI file) and spawns a server that behaves exactly like the real thing—populating responses with realistic, smart data automatically.
 
+![DoppelAPI Dashboard Overview](media/dashboard-overview.png)
+
 ## Why DoppelAPI?
 
 - **Unblock Frontend Teams**: Start building UI components immediately using the agreed-upon API contract. No more "mocking hardcoded JSONs" in your codebase.
 - **Smart & Realistic Data**: Instead of returning `string` or `null`, DoppelAPI uses AI-driven Faker.js integration to return real names, emails, addresses, and images based on your schema.
 - **Test Edge Cases**: Simulate slow networks (latency) or server crashes (chaos mode) with a single flag to ensure your app handles errors gracefully.
 - **Self-Documenting**: Includes a beautiful Visual Dashboard that serves as live documentation for your team, complete with copy-pasteable request/response examples.
+
+### Intelligent Responses
+DoppelAPI doesn't just serve static files. It understands your OpenAPI schema and **generates data on the fly**.
+- **Dynamic Data**: Every request returns fresh, varied data. It feels like a real database.
+- **Schema Compliant**: If your schema defines a field as a `UUID` or an `email`, DoppelAPI ensures the response matches perfectly.
+- **Zero Config**: No need to write manual mock scripts. It works straight out of the box with your existing definition file.
+
+![DoppelAPI Response Preview](media/dashboard-response-preview.png)
+
+### Effortless Requests
+Knowing *what* to send to an API is half the battle. DoppelAPI removes the guesswork.
+- **Visual Examples**: The built-in Dashboard displays precise **JSON Request Bodies** for every endpoint. Just copy and paste into your app.
+- **Postman Ready**: Export the entire API collection to Postman in one click, pre-configured with variable URLs and paths.
+- **CORS Solved**: Forget about CORS errors during development. DoppelAPI handles headers automatically, so your frontend calls just work.
+
+![DoppelAPI Dashboard Preview](media/dashboard-preview.png)
 
 ## Features
 
