@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  mockdraft:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount your OpenAPI file
+      - ./openapi.yaml:/app/specs/openapi.yaml:ro
+    command: ["start", "/app/specs/openapi.yaml", "-p", "3000"]
+    # Uncomment to enable features
+    # command: ["start", "/app/specs/openapi.yaml", "-p", "3000", "--delay", "--chaos"]
+    restart: unless-stopped
